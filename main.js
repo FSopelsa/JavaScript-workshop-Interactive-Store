@@ -19,15 +19,15 @@ const categoryFilters = document.querySelectorAll('.category-filter');
  */
 function createProductCard(product) {
     const card = document.createElement('article');
-    card.className = 'border border-slate-200 rounded-[1.25rem] bg-white p-3 transition-all duration-400 hover:border-blue-400 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 group';
+    card.className = 'product-card border border-line rounded-[1.125rem] bg-surface p-3 transition-all duration-400 hover:border-brand hover:shadow-lg hover:-translate-y-0.5 group';
     card.innerHTML = `
-        <div class="relative overflow-hidden rounded-2xl bg-slate-100">
-            <img class="aspect-[4/5] w-full object-cover group-hover:scale-110 transition-transform duration-700"/>
+        <div class="relative overflow-hidden rounded-2xl bg-inset">
+            <img class="aspect-[4/5] w-full object-cover group-hover:scale-105 transition-transform duration-700"/>
 
             <!-- Product Overlay Actions -->
-            <div class="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
+            <div class="product-overlay absolute inset-0 bg-canvas/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
                 <button type="button"
-                        class="h-12 w-12 rounded-full bg-white text-slate-900 shadow-xl flex items-center justify-center translate-y-4 group-hover:translate-y-0 transition-transform duration-500 hover:bg-blue-600 hover:text-white"
+                        class="h-12 w-12 rounded-full bg-surface text-ink shadow-xl flex items-center justify-center translate-y-4 group-hover:translate-y-0 transition-transform duration-500 hover:bg-brand-hover hover:text-onbrand"
                         aria-label="Quick View">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -37,7 +37,7 @@ function createProductCard(product) {
                     </svg>
                 </button>
                 <button type="button"
-                        class="h-12 w-12 rounded-full bg-white text-slate-900 shadow-xl flex items-center justify-center translate-y-4 group-hover:translate-y-0 transition-transform duration-500 delay-75 hover:bg-blue-600 hover:text-white"
+                        class="h-12 w-12 rounded-full bg-surface text-ink shadow-xl flex items-center justify-center translate-y-4 group-hover:translate-y-0 transition-transform duration-500 delay-75 hover:bg-brand-hover hover:text-onbrand"
                         aria-label="Add to cart">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                          fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
@@ -50,26 +50,26 @@ function createProductCard(product) {
 
             <!-- Favorite -->
             <button type="button"
-                    class="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/50 bg-white/70 text-slate-600 backdrop-blur-md transition-all duration-300 hover:bg-white hover:text-rose-500 hover:shadow-lg group/heart"
+                    class="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-surface/90 text-muted backdrop-blur-md transition-all duration-300 hover:bg-surface hover:text-brand hover:shadow-lg group/heart"
                     aria-label="Add to favorites" title="Favorite">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                      stroke-linejoin="round"
-                     class="transition-colors group-hover/heart:fill-rose-500 group-hover/heart:stroke-rose-500">
+                     class="transition-colors group-hover/heart:fill-brand group-hover/heart:stroke-brand">
                     <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
                 </svg>
             </button>
         </div>
 
         <div class="mt-4 px-1 pb-2 space-y-1">
-            <p class="text-[10px] font-black uppercase tracking-[0.15em] text-blue-600/70"></p>
-            <h3 class="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors"></h3>
-            <p class="text-[11px] font-medium text-slate-500"></p>
+            <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand"></p>
+            <h3 class="text-sm font-bold text-ink group-hover:text-brand transition-colors"></h3>
+            <p class="text-[11px] font-medium text-muted"></p>
 
-            <div class="flex items-center justify-between gap-3 pt-3">
-                <span class="text-lg font-black text-slate-900 tracking-tight"></span>
+            <div class="flex flex-col items-stretch gap-3 pt-3">
+                <span class="text-lg font-semibold text-ink tracking-tight"></span>
                 <button type="button"
-                        class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-xs font-bold text-white transition-all duration-300 hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-200 active:scale-95 group/btn"
+                        class="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-brand px-5 text-xs font-bold text-onbrand transition-all duration-300 hover:bg-brand-hover hover:shadow-lg hover:shadow-black/20 active:scale-95 group/btn"
                         aria-label="Add to cart">
                     Add to cart
                 </button>

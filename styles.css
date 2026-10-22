@@ -1,0 +1,54 @@
+/* Build these utilities locally so the browser does not need the Tailwind CDN. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Native inputs and scrollbars should match the dark Tailwind palette. */
+:root {
+    color-scheme: dark;
+}
+
+body {
+    background-image: radial-gradient(ellipse at top left, rgb(190 240 120 / 4%), transparent 55%);
+}
+
+::selection {
+    background: #BEF078;
+    color: #171E26;
+}
+
+/* Keyboard focus must remain visible even on controls with outline-none. */
+:is(a, button, input, select):focus-visible {
+    outline: 2px solid #BEF078;
+    outline-offset: 3px;
+}
+
+/* Reveal the image actions for keyboard users as well as pointer users. */
+.product-card:focus-within {
+    border-color: #BEF078;
+}
+
+.product-card:focus-within .product-overlay {
+    opacity: 1;
+}
+
+.product-card:focus-within .product-overlay button {
+    transform: translateY(0);
+}
+
+/* Keep the existing effects optional for people who prefer less movement. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+
+    .product-card,
+    .product-card img,
+    .product-overlay button {
+        transform: none !important;
+    }
+}

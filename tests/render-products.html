@@ -52,6 +52,7 @@
             ];
             check(grid.children.length === 8, 'Initial load must show all eight products.');
             checkProductNames(grid, expectedNames, 'Product names or order are incorrect.');
+            check(store.getComputedStyle(grid).display === 'grid', 'Product layout styles must load with the page.');
 
             const all = store.document.querySelector('.category-filter[value="all"]');
             const outerwear = store.document.querySelector('.category-filter[value="Outerwear"]');
