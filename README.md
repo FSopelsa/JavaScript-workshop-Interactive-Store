@@ -12,12 +12,22 @@ This project offers a practical way to study JavaScript in a familiar setting. R
 2. Check `package.json` for available scripts and setup instructions.
 3. If the project has no package scripts, look for an HTML entry point and open it in a browser.
 
-## Exploring the project
+---
 
-- Run the application and try its interactive elements.
-- Follow the JavaScript code that connects user actions to page behavior.
-- Review the implementation and explain how it meets the workshop objectives.
+![Store running with Live Server](store-live-server.png)
 
-## For examiners
+---
 
-Use the source code and running application to assess the project. Consider how JavaScript drives the interaction and how clearly the implementation supports the intended store experience.
+## Store styling
+
+The page loads `store.css` locally, so the layout does not depend on the browser loading Tailwind from a CDN. The generated stylesheet is included in the project; opening the page with Live Server does not require a build.
+
+After changing Tailwind classes, colors in `tailwind.config.js`, or custom CSS in
+`styles.css`, run this command from the workshop folder to regenerate `store.css`:
+
+```shell
+npx --yes tailwindcss@3.4.19 --config ./tailwind.config.js --input ./styles.css --output ./store.css --minify
+```
+
+Edit the source files rather than the generated `store.css` file.
+
