@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Task 1: Product rendering checks</title>
+</head>
+<body>
+<h1>Task 1: Product rendering checks</h1>
+<p>Serve the workshop over HTTP, then open this page. No test dependencies are required.</p>
+<pre id="result">Running checks...</pre>
+<iframe id="store" src="../index.html" title="Store under test" hidden></iframe>
+<script>
+    const result = document.getElementById('result');
+    let checks = 0;
+
+    // Stop at the first broken expectation so the page shows the reason for failure.
+    // Counting successful checks also confirms that the test reached the final step.
+    function check(condition, message) {
+        if (!condition) {
+            throw new Error(message);
+        }
+        checks += 1;
+    }
+
+    // Wait for the actual store to load, including its scripts, then check its DOM.
+    // A small custom product lets us test replacement, safe text, and empty results
+    // without changing products.js or implementing the later filtering tasks.
+    function runChecks() {
+        try {
+            const store = document.getElementById('store').contentWindow;
+            const grid = store.document.getElementById('product-grid');
+            const expectedNames = [
+                'Technical Shell Jacket', 'Speedster Running Shoes',
+                'Minimalist Quartz Watch', 'Classic Canvas Sneakers',
+                'Premium Wireless Headphones', 'Tech Daypack',
+                'Urban Explorer Boots', 'Polarized Retro Sunglasses'
+            ];
+            const names = Array.from(grid.querySelectorAll('h3'), heading => heading.textContent.trim());
+            check(grid.children.length === 8, 'Initial load must show all eight products.');
+            check(JSON.stringify(names) === JSON.stringify(expectedNames), 'Product names or order are incorrect.');
+
+            const product = {
+                id: 99,
+                name: 'Test <b>jacket</b> & "coat"',
+                category: 'Test <i>category</i>',
+                availability: 'Available <strong>today</strong>',
+                price: 1234.5,
+                image: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+            };
+            const subset = [product];
+            store.renderProducts(subset);
+            check(grid.children.length === 1, 'Rendering a subset must replace the previous cards.');
+            const card = grid.firstElementChild;
+            check(card.tagName === 'ARTICLE', 'Each product must render as an article.');
+            check(card.querySelector('h3').textContent === product.name, 'Product name must remain literal text.');
+            check(card.querySelector('p').textContent === product.category, 'Category must remain literal text.');
+            check(card.querySelector('h3 + p').textContent === product.availability, 'Availability must remain literal text.');
+            check(!card.querySelector('b, i, strong'), 'Product text must not create HTML elements.');
+            check(card.querySelector('img').getAttribute('src') === product.image, 'Image must use the supplied source.');
+            check(card.querySelector('img').alt === product.name, 'Image alt text must identify the product.');
+            const expectedPrice = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'SEK' }).format(1234.5);
+            check(card.querySelector('span.text-lg').textContent === expectedPrice, 'Price must use SEK currency formatting.');
+            check(subset.length === 1 && subset[0] === product, 'Rendering must preserve the supplied array.');
+
+            store.renderProducts(subset);
+            check(grid.children.length === 1, 'Rendering twice must not duplicate cards.');
+            store.renderProducts([]);
+            check(grid.children.length === 0, 'An empty array must clear the grid.');
+            store.renderProducts(subset);
+            check(grid.children.length === 1, 'Products must render again after an empty result.');
+            result.textContent = `PASS: ${checks} checks.`;
+        } catch (error) {
+            result.textContent = `FAIL after ${checks} checks: ${error.message}`;
+            console.error(error);
+        }
+    }
+
+    document.getElementById('store').addEventListener('load', runChecks);
+</script>
+</body>
+</html>
