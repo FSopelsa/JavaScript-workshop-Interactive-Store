@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tasks 4–5: Cart and persistence checks</title>
+</head>
+<body>
+<h1>Tasks 4–5: Cart and persistence checks</h1>
+<p>Serve the workshop over HTTP, then open this page. The checks temporarily replace
+    the localStorage cart and restore its original value afterwards.</p>
+<pre id="result">Running checks...</pre>
+<iframe id="store" title="Store under test" hidden></iframe>
+<script>
+    const result = document.getElementById('result');
+    let checks = 0;
+
+    // Stop at the first broken expectation and include its reason in the page result.
+    function check(condition, message) {
+        if (!condition) {
+            throw new Error(message);
+        }
+        checks += 1;
+    }
+
+    // Navigate the iframe again to run the real startup code with current storage.
+    // The one-time listener prevents later reloads from repeating an earlier step.
+    function loadStore() {
+        return new Promise(resolve => {
+            const frame = document.getElementById('store');
+            frame.addEventListener('load', () => resolve(frame.contentWindow), { once: true });
+            frame.src = '../index.html';
+        });
+    }
+
+    // Compare persisted product IDs with a hand-written expected order. Repeated IDs
+    // represent repeated additions, rather than separate quantity objects.
+    function checkSavedIds(expectedIds) {
+        const ids = JSON.parse(localStorage.getItem('cart')).map(product => product.id);
+        check(JSON.stringify(ids) === JSON.stringify(expectedIds), 'Saved cart IDs or quantities are incorrect.');
+    }
+
+    // Exercise real buttons, reloads, and malformed stored values. Temporarily replace
+    // storage methods only for the browser errors that normal clicks cannot produce.
+    // Finally restore the original cart so running these checks does not clear it.
+    async function runChecks() {
+        const originalCart = localStorage.getItem('cart');
+        try {
+            localStorage.removeItem('cart');
+            let store = await loadStore();
+            let badge = store.document.getElementById('cart-count');
+            check(badge.textContent === '0' && badge.classList.contains('hidden'), 'An empty cart must have a hidden zero badge.');
+            check(badge.parentElement.getAttribute('aria-label') === 'Cart (0)', 'The cart button must expose its count to assistive technology.');
+
+            const buttons = store.document.querySelectorAll('#product-grid article:first-child [aria-label="Add to cart"]');
+            check(buttons.length === 2, 'Both cart buttons must remain available on a product card.');
+            buttons[0].click();
+            check(badge.textContent === '1' && !badge.classList.contains('hidden'), 'The overlay button must add one item and show the badge.');
+            checkSavedIds([1]);
+            let notification = store.document.getElementById('cart-notification');
+            check(notification.textContent.includes('Technical Shell Jacket') && !notification.classList.contains('hidden'), 'Adding an item must show its name in a notification.');
+            check(notification.parentElement.getAttribute('role') === 'status', 'The notification must have an accessible status region.');
+            buttons[0].click();
+            check(badge.textContent === '2', 'Adding the same product twice must count two items.');
+            checkSavedIds([1, 1]);
+            buttons[1].click();
+            check(badge.textContent === '3', 'The lower cart button must also add an item.');
+            checkSavedIds([1, 1, 1]);
+            store.addToCart(999);
+            check(badge.textContent === '3', 'An unknown product ID must not change the cart.');
+            checkSavedIds([1, 1, 1]);
+
+            const search = store.document.getElementById('search-input');
+            search.value = 'podcasts';
+            search.dispatchEvent(new store.Event('input', { bubbles: true }));
+            store.document.querySelector('#product-grid [aria-label="Add to cart"]').click();
+            check(badge.textContent === '4', 'Buttons on newly rendered search results must work.');
+            checkSavedIds([1, 1, 1, 5]);
+            search.value = '';
+            search.dispatchEvent(new store.Event('input', { bubbles: true }));
+            check(badge.textContent === '4', 'Re-rendering the catalogue must preserve the cart.');
+
+            store = await loadStore();
+            badge = store.document.getElementById('cart-count');
+            check(badge.textContent === '4' && !badge.classList.contains('hidden'), 'Reload must immediately restore the cart count.');
+            checkSavedIds([1, 1, 1, 5]);
+            check(store.document.getElementById('cart-notification').classList.contains('hidden'), 'Restoring the cart must not show an add-item notification.');
+
+            localStorage.setItem('cart', JSON.stringify([
+                { id: 1, name: '<b>Changed name</b>', price: 1 }, null, 42, 'invalid', {},
+                { id: 999 }, { id: 2 }, { id: '1' }, { id: 1 }
+            ]));
+            store = await loadStore();
+            check(store.document.getElementById('cart-count').textContent === '3', 'Restore must keep valid repeated IDs and discard invalid entries.');
+            store.addToCart(5);
+            checkSavedIds([1, 2, 1, 5]);
+            const restoredProduct = JSON.parse(localStorage.getItem('cart'))[0];
+            check(restoredProduct.name === 'Technical Shell Jacket' && restoredProduct.price === 890, 'Restored products must use current catalogue data, not saved names or prices.');
+
+            for (const invalidCart of ['[]', '{broken', 'null', '42', '"cart"', '{"id":1}', '[null,{},999,{"id":999}]']) {
+                localStorage.setItem('cart', invalidCart);
+                store = await loadStore();
+                badge = store.document.getElementById('cart-count');
+                check(badge.textContent === '0' && badge.classList.contains('hidden')
+                    && store.document.querySelectorAll('#product-grid article').length === 8,
+                    `Invalid or empty cart must not prevent startup: ${invalidCart}`);
+            }
+
+            localStorage.removeItem('cart');
+            const storagePrototype = store.Storage.prototype;
+            const originalGetItem = storagePrototype.getItem;
+            const originalSetItem = storagePrototype.setItem;
+            try {
+                // These native methods can throw when storage is blocked or full.
+                storagePrototype.getItem = () => { throw new store.DOMException('Storage blocked', 'SecurityError'); };
+                store.loadCart();
+                store.updateCartCount();
+                check(badge.textContent === '0', 'A storage read failure must leave the empty cart usable.');
+                storagePrototype.setItem = () => { throw new store.DOMException('Storage full', 'QuotaExceededError'); };
+                store.addToCart(2);
+                check(badge.textContent === '1', 'A storage write failure must not prevent adding an item.');
+                notification = store.document.getElementById('cart-notification');
+                check(notification.textContent.includes('could not be saved'), 'A failed save must tell the user persistence is unavailable.');
+                check(localStorage.getItem('cart') === null, 'A failed save must not pretend that the cart was stored.');
+            } finally {
+                storagePrototype.getItem = originalGetItem;
+                storagePrototype.setItem = originalSetItem;
+            }
+
+            store.addToCart(5);
+            checkSavedIds([2, 5]);
+            check(!notification.textContent.includes('could not be saved'), 'A later successful save must replace the earlier failure notification.');
+            await new Promise(resolve => setTimeout(resolve, 4200));
+            check(notification.classList.contains('hidden') && notification.textContent === '', 'The notification must disappear after its timeout.');
+            result.textContent = `PASS: ${checks} checks.`;
+        } catch (error) {
+            result.textContent = `FAIL after ${checks} checks: ${error.message}`;
+            console.error(error);
+        } finally {
+            if (originalCart === null) {
+                localStorage.removeItem('cart');
+            } else {
+                localStorage.setItem('cart', originalCart);
+            }
+        }
+    }
+
+    runChecks();
+</script>
+</body>
+</html>

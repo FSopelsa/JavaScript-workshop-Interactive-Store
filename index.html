@@ -77,7 +77,7 @@
                     </svg>
                     <!-- Cart Count Badge -->
                     <span id="cart-count"
-                          class="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm hidden">0</span>
+                          class="absolute -top-1.5 -right-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm hidden">0</span>
                 </button>
 
                 <!-- User -->
@@ -424,6 +424,12 @@
         </div>
     </div>
 </footer>
+<!-- The live region stays present while its notification is shown and hidden. -->
+<div role="status" aria-live="polite" aria-atomic="true"
+     class="pointer-events-none fixed bottom-6 left-4 right-4 z-50 sm:left-auto sm:right-6 sm:max-w-sm">
+    <p id="cart-notification"
+       class="hidden rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg"></p>
+</div>
 <script src="products.js"></script>
 <script src="main.js"></script>
 </body>

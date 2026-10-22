@@ -1,12 +1,10 @@
-// main.js
-
-// 1. Initialize State
 let cart = [];
+let notificationTimeout;
 
-// 2. Select DOM Elements
 const productGrid = document.getElementById('product-grid');
 const searchInput = document.getElementById('search-input');
 const cartCount = document.getElementById('cart-count');
+const cartNotification = document.getElementById('cart-notification');
 const categoryFilters = document.querySelectorAll('.category-filter');
 
 // 3. Create and Render Product Cards
@@ -16,8 +14,8 @@ const categoryFilters = document.querySelectorAll('.category-filter');
  * The template literal below holds the shared design; textContent fills in product
  * text without interpreting characters such as < or & as HTML. The image properties
  * supply its source and accessible description, and toLocaleString formats the price
- * as Swedish kronor using the browser's locale. Cart, quick-view, and favorite buttons
- * keep their existing appearance; their behavior belongs to later workshop tasks.
+ * as Swedish kronor using the browser's locale. Both cart buttons use this product's
+ * ID when clicked. Quick-view and favorite behavior belongs to later workshop tasks.
  */
 function createProductCard(product) {
     const card = document.createElement('article');
@@ -90,6 +88,12 @@ function createProductCard(product) {
         currency: 'SEK'
     });
 
+    // Attach listeners while creating the card so newly filtered cards work too.
+    // Each callback remembers the product belonging to this particular card.
+    card.querySelectorAll('[aria-label="Add to cart"]').forEach(button => {
+        button.addEventListener('click', () => addToCart(product.id));
+    });
+
     return card;
 }
 
@@ -100,7 +104,7 @@ function createProductCard(product) {
  * and an empty array leaves an empty grid. forEach visits each
  * product in order, and appendChild adds the card returned by createProductCard.
  * This function only displays data: it does not change or filter the supplied array.
- * Later category and search tasks can pass their results to this same function.
+ * Category and search filtering pass their results to this same function.
  */
 function renderProducts(productsToRender) {
     productGrid.textContent = '';
@@ -110,64 +114,149 @@ function renderProducts(productsToRender) {
 }
 
 // 4. Add to Cart Function
+/**
+ * Find a product by its numeric ID and add one item to the cart. find returns
+ * undefined for an unknown ID, so return before changing anything in that case.
+ * push adds another entry even if the product is already present: cart.length
+ * therefore counts items, not distinct products. Update the badge immediately.
+ * localStorage stores text, so JSON.stringify converts the cart array to JSON.
+ * A blocked or full storage area can throw; keep the in-memory cart usable and
+ * tell the user if this addition could not be saved for a later page load.
+ */
 function addToCart(productId) {
-    // TODO: Find product by id
-    // TODO: Add to cart array
-    // TODO: Update cart count UI
-    // TODO: Save to localStorage
+    const product = products.find(product => product.id === productId);
+    if (!product) {
+        return;
+    }
+
+    cart.push(product);
+    updateCartCount();
+
+    let message = `${product.name} added to cart. Items in cart: ${cart.length}.`;
+    try {
+        localStorage.setItem('cart', JSON.stringify(cart));
+    } catch (error) {
+        console.warn('Cart changes could not be saved.', error);
+        message += ' Cart changes could not be saved for reload.';
+    }
+    showCartNotification(message);
 }
 
 // 5. Update Cart Count UI
-function updateCartCount() {
-    // TODO: Set textContent of cartCount
-    // TODO: Show/hide cartCount based on items
-}
-
-// 6. Event Listeners
-// Search
-if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-        // TODO: Filter products by name or description
-    });
-}
-
-// Category Filters
 /**
- * Show products matching the categories currently checked in the sidebar.
+ * Keep the badge and the cart button's accessible label in sync with cart.length.
+ * Hide the badge when empty, then reveal it on the first addition. The button's
+ * aria-label includes the count so assistive technology can read it as well.
+ */
+function updateCartCount() {
+    cartCount.textContent = cart.length;
+    cartCount.parentElement.setAttribute('aria-label', `Cart (${cart.length})`);
+    if (cart.length === 0) {
+        cartCount.classList.add('hidden');
+    } else {
+        cartCount.classList.remove('hidden');
+    }
+}
+
+/**
+ * Show plain text in the page's live status region without moving keyboard focus.
+ * Cancel the previous timeout so an earlier addition cannot hide a newer message.
+ * setTimeout runs the cleanup callback after 4000 milliseconds; assigning its ID
+ * lets the next call cancel it with clearTimeout. Clear the text when hiding it.
+ */
+function showCartNotification(message) {
+    clearTimeout(notificationTimeout);
+    cartNotification.textContent = message;
+    cartNotification.classList.remove('hidden');
+    notificationTimeout = setTimeout(() => {
+        cartNotification.classList.add('hidden');
+        cartNotification.textContent = '';
+    }, 4000);
+}
+
+/**
+ * Restore the cart at startup, starting empty if storage is missing or unusable.
+ * JSON.parse turns the saved text back into a JavaScript value. Array.isArray
+ * checks its shape before calling array methods: valid JSON can also be a number,
+ * string, object, or null. Keep only object entries, then use each saved ID to find
+ * the current catalogue product. find returns undefined for removed or invalid IDs;
+ * the final filter discards those entries while keeping valid repeated additions.
+ * This uses current product names and prices instead of trusting stored copies.
+ * Reading storage and parsing malformed JSON can throw, so catch both errors
+ * without preventing the rest of the page from loading.
+ */
+function loadCart() {
+    cart = [];
+    try {
+        const savedCart = JSON.parse(localStorage.getItem('cart') || '[]');
+        if (Array.isArray(savedCart)) {
+            cart = savedCart
+                .filter(product => product !== null && typeof product === 'object')
+                .map(savedProduct => products.find(product => product.id === savedProduct.id))
+                .filter(product => product !== undefined);
+        }
+    } catch (error) {
+        console.warn('The saved cart could not be restored.', error);
+    }
+}
+
+// 6. Product Filtering and Event Listeners
+/**
+ * Show products matching both the current category selection and search text.
+ * Search and category events use this same function so neither control resets
+ * the other's results. Always start from products, not the previously visible
+ * cards, so removing a restriction can bring matching products back.
+ *
  * Array.from turns the checkbox NodeList into an array so filter can keep checked
  * boxes and map can collect their values, such as 'Outerwear' and 'Footwear'.
  * Here, includes checks whether an entire value appears in an array. Unlike the
  * string includes shown in the presentation, which looks for part of a string,
  * this array version requires an exact category value, including letter case.
  * Following the README, no selection or a checked 'all' box shows every product,
- * even when individual categories are also checked. Otherwise, products.filter
- * keeps a product when its category appears in the selected values. That creates
- * a new array without changing products or its order, so later selections can
- * always start from the full catalogue. renderProducts replaces the visible cards.
+ * even when individual categories are also checked. This rule applies only to
+ * categories: a non-empty search query still narrows the results.
+ *
+ * trim removes whitespace at either end of the query. toLowerCase normalizes the
+ * query, name, and description so letter case does not affect matching. Here,
+ * string includes checks whether the query appears anywhere in either field.
+ * Every string includes the empty string, so clearing the query removes only the
+ * search restriction. The final && requires both category and search to match.
+ * filter returns a new array in source order; renderProducts displays it once.
  */
-function filterProductsByCategory() {
+function filterProducts() {
     const checkedCategories = Array.from(categoryFilters)
         .filter(filter => filter.checked)
         .map(filter => filter.value);
 
     const showAll = checkedCategories.length === 0 || checkedCategories.includes('all');
-    const productsToRender = showAll
-        ? products
-        : products.filter(product => checkedCategories.includes(product.category));
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    const productsToRender = products.filter(product => {
+        const matchesCategory = showAll || checkedCategories.includes(product.category);
+        const matchesSearch = product.name.toLowerCase().includes(query)
+            || product.description.toLowerCase().includes(query);
+
+        return matchesCategory && matchesSearch;
+    });
 
     renderProducts(productsToRender);
 }
 
-// Every checkbox uses the same handler, which reads the current selection each time.
+// input runs for each edit, including typing, pasting, and clearing the search field.
+if (searchInput) {
+    searchInput.addEventListener('input', filterProducts);
+}
+
+// Every checkbox uses the same handler, which reads both controls each time.
 categoryFilters.forEach(filter => {
-    filter.addEventListener('change', filterProductsByCategory);
+    filter.addEventListener('change', filterProducts);
 });
 
 // 7. Initial Load
 document.addEventListener('DOMContentLoaded', () => {
-    // TODO: Load cart from localStorage
-    // TODO: Update cart count UI
+    // Restore once, then update the header even when no products are in the cart.
+    loadCart();
+    updateCartCount();
     // products.js loads before main.js, so its full array is available here.
-    // Read the initial checkbox state so the first list agrees with the filters.
-    filterProductsByCategory();
+    // Read both controls so the first list agrees with any initial filter values.
+    filterProducts();
 });

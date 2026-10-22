@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tasks 1–2: Product rendering and category checks</title>
+    <title>Tasks 1–3: Product rendering, category, and search checks</title>
 </head>
 <body>
-<h1>Tasks 1–2: Product rendering and category checks</h1>
+<h1>Tasks 1–3: Product rendering, category, and search checks</h1>
 <p>Serve the workshop over HTTP, then open this page. No test dependencies are required.</p>
 <pre id="result">Running checks...</pre>
 <iframe id="store" src="../index.html" title="Store under test" hidden></iframe>
@@ -29,9 +29,17 @@
         check(JSON.stringify(names) === JSON.stringify(expectedNames), message);
     }
 
+    // Set the search field and send the same input event that typing produces.
+    // Use the store window's Event constructor because the field lives in its iframe.
+    function enterSearch(store, query) {
+        const input = store.document.getElementById('search-input');
+        input.value = query;
+        input.dispatchEvent(new store.Event('input', { bubbles: true }));
+    }
+
     // Wait for the actual store and its scripts, then use real checkbox clicks to
     // exercise every category listener. Afterwards, a small custom product tests
-    // rendering without changing products.js or implementing search and cart logic.
+    // rendering without changing products.js or implementing cart logic.
     function runChecks() {
         try {
             const store = document.getElementById('store').contentWindow;
@@ -85,6 +93,54 @@
             checkProductNames(grid, expectedNames, 'Switching categories must not remove products from the source.');
             all.click();
             checkProductNames(grid, expectedNames, 'Selecting All Products alone must show every product.');
+
+            enterSearch(store, 'sHeLl');
+            checkProductNames(grid, ['Technical Shell Jacket'], 'Search must match part of a name without case sensitivity.');
+            enterSearch(store, 'PoDcAsT');
+            checkProductNames(grid, ['Premium Wireless Headphones'], 'Search must match part of a description without case sensitivity.');
+            enterSearch(store, 'walks');
+            checkProductNames(grid, ['Technical Shell Jacket', 'Urban Explorer Boots'], 'Search must include every matching description in source order.');
+            enterSearch(store, '  cAnVaS  ');
+            checkProductNames(grid, ['Classic Canvas Sneakers'], 'Surrounding query whitespace must be ignored.');
+            enterSearch(store, 'no-such-product');
+            checkProductNames(grid, [], 'A query with no matches must clear previous results.');
+            enterSearch(store, '');
+            checkProductNames(grid, expectedNames, 'Clearing the query must restore every product when All Products is checked.');
+            enterSearch(store, '   ');
+            checkProductNames(grid, expectedNames, 'A whitespace-only query must behave like an empty query.');
+
+            enterSearch(store, 'walks');
+            all.click();
+            outerwear.click();
+            checkProductNames(grid, ['Technical Shell Jacket'], 'Changing categories must keep the current search query.');
+            footwear.click();
+            checkProductNames(grid, ['Technical Shell Jacket', 'Urban Explorer Boots'], 'Search must work across multiple selected categories.');
+            enterSearch(store, 'canvas');
+            checkProductNames(grid, ['Classic Canvas Sneakers'], 'Changing the query must keep the selected categories.');
+            enterSearch(store, '');
+            checkProductNames(grid, [
+                'Technical Shell Jacket', 'Speedster Running Shoes',
+                'Classic Canvas Sneakers', 'Urban Explorer Boots'
+            ], 'Clearing the query must preserve category filtering.');
+            enterSearch(store, 'podcasts');
+            checkProductNames(grid, [], 'A matching description outside the selected categories must stay excluded.');
+            accessories.click();
+            checkProductNames(grid, ['Premium Wireless Headphones'], 'Adding a matching category must restore search results.');
+            all.click();
+            checkProductNames(grid, ['Premium Wireless Headphones'], 'All Products must override only categories, not the search query.');
+            enterSearch(store, 'no-such-product');
+            checkProductNames(grid, [], 'All Products must not bypass a query with no matches.');
+            enterSearch(store, '');
+            checkProductNames(grid, expectedNames, 'Clearing both restrictions must restore the full catalogue.');
+            all.click();
+            outerwear.click();
+            footwear.click();
+            accessories.click();
+            checkProductNames(grid, expectedNames, 'Search and category changes must preserve all original products.');
+            enterSearch(store, 'podcasts');
+            checkProductNames(grid, ['Premium Wireless Headphones'], 'No checked categories must still respect the search query.');
+            enterSearch(store, '');
+            all.click();
 
             const product = {
                 id: 99,
