@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Task 6.4: View cart checks</title></head>
+<body>
+<h1>Task 6.4: View cart checks</h1>
+<p>These checks temporarily replace the saved cart and restore it afterwards.</p>
+<pre id="result">Running checks...</pre>
+<iframe id="store" title="Store under test"></iframe>
+<script>
+    let checks = 0;
+
+    // Report the first failed expectation rather than continuing with invalid state.
+    function check(condition, message) {
+        if (!condition) throw new Error(message);
+        checks += 1;
+    }
+
+    // Reload the actual page so persistence is exercised through its startup code.
+    function loadStore() {
+        return new Promise(resolve => {
+            const frame = document.getElementById('store');
+            frame.addEventListener('load', () => resolve(frame.contentWindow), { once: true });
+            frame.src = '../index.html';
+        });
+    }
+
+    // Exercise the real modal and buttons; restore the user's cart even on failure.
+    async function runChecks() {
+        const originalCart = localStorage.getItem('cart');
+        try {
+            localStorage.removeItem('cart');
+            let store = await loadStore();
+            let doc = store.document;
+            let dialog = doc.getElementById('cart-dialog');
+            check(dialog !== null, 'The cart modal must exist.');
+            doc.getElementById('cart-button').click();
+            check(dialog.open, 'The header button must open the modal.');
+            check(doc.getElementById('cart-items').textContent.includes('Your cart is empty'), 'An empty cart must explain its state.');
+            check(doc.getElementById('cart-total').textContent === (0).toLocaleString(undefined, {style: 'currency', currency: 'SEK'}), 'An empty cart must total zero.');
+            doc.getElementById('close-cart').click();
+            check(!dialog.open, 'The close button must close the modal.');
+
+            store.addToCart(1);
+            store.addToCart(1);
+            store.addToCart(2);
+            doc.getElementById('cart-button').click();
+            check(doc.querySelectorAll('#cart-items li').length === 2, 'Repeated products must share one row.');
+            check(doc.querySelector('#cart-items li').textContent.includes('Quantity: 2'), 'The row must display repeated additions as a quantity.');
+            check(doc.getElementById('cart-total').textContent === (2980).toLocaleString(undefined, {style: 'currency', currency: 'SEK'}), 'The total must include every item.');
+            store.addToCart(2);
+            check(doc.querySelectorAll('#cart-items li')[1].textContent.includes('Quantity: 2'), 'An open cart must reflect new additions.');
+            doc.querySelector('#cart-items button').click();
+            check(doc.querySelectorAll('#cart-items li').length === 1, 'Remove must delete the whole product row.');
+            check(doc.getElementById('cart-count').textContent === '2', 'Remove must update the header quantity.');
+            check(JSON.stringify(JSON.parse(localStorage.getItem('cart')).map(product => product.id)) === '[2,2]', 'Remove must persist the remaining items.');
+            check(doc.activeElement === doc.querySelector('#cart-items button'), 'Focus must move to a remaining remove button.');
+
+            store = await loadStore();
+            doc = store.document;
+            doc.getElementById('cart-button').click();
+            check(doc.querySelectorAll('#cart-items li').length === 1 && doc.querySelector('#cart-items li').textContent.includes('Quantity: 2'), 'Reload must restore the remaining quantities.');
+            const storagePrototype = store.Storage.prototype;
+            const originalSetItem = storagePrototype.setItem;
+            try {
+                storagePrototype.setItem = () => { throw new store.DOMException('Storage full', 'QuotaExceededError'); };
+                doc.querySelector('#cart-items button').click();
+                check(doc.getElementById('cart-items').textContent.includes('Your cart is empty'), 'Removal must still work when storage fails.');
+                check(doc.getElementById('cart-feedback').textContent.includes('could not be saved'), 'A failed removal save must be visible inside the modal.');
+                check(doc.activeElement === doc.getElementById('close-cart'), 'Removing the final row must leave focus on Close.');
+            } finally {
+                storagePrototype.setItem = originalSetItem;
+            }
+            store.addToCart(1);
+            doc.querySelector('#cart-items button').click();
+            check(localStorage.getItem('cart') === '[]', 'Removing the last item must persist an empty cart.');
+            check(doc.getElementById('cart-count').classList.contains('hidden'), 'Removing the last item must hide the badge.');
+            document.getElementById('result').textContent = `PASS: ${checks} checks.`;
+        } catch (error) {
+            document.getElementById('result').textContent = `FAIL after ${checks} checks: ${error.message}`;
+            console.error(error);
+        } finally {
+            if (originalCart === null) localStorage.removeItem('cart');
+            else localStorage.setItem('cart', originalCart);
+        }
+    }
+    runChecks();
+</script>
+</body>
+</html>

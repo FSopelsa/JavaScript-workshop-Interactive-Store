@@ -1,8 +1,4 @@
-// The Tailwind CLI reads this object when generating the local store.css file.
-// content includes both the page and the product cards created in main.js.
-// extend keeps standard utilities and adds colors such as bg-surface and text-muted.
-// These colors and the system font follow the TokenUsageTracker widget's palette.
-// This file configures appearance only; workshop behavior remains in main.js.
+// Tailwind scans both static markup and the product-card template in main.js.
 module.exports = {
     content: ['./index.html', './main.js'],
     theme: {

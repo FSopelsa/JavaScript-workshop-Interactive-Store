@@ -17,6 +17,17 @@ body {
     color: #171E26;
 }
 
+/* Keep long carts scrollable and leave room around the modal on small screens. */
+#cart-dialog {
+    width: min(32rem, calc(100% - 2rem));
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+}
+
+#cart-dialog::backdrop {
+    background: rgb(0 0 0 / 65%);
+}
+
 /* Keyboard focus must remain visible even on controls with outline-none. */
 :is(a, button, input, select):focus-visible {
     outline: 2px solid #BEF078;

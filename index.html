@@ -66,7 +66,7 @@
                 </div>
 
                 <!-- Cart -->
-                <button type="button"
+                <button id="cart-button" type="button" aria-haspopup="dialog" aria-controls="cart-dialog"
                         class="relative inline-flex h-10 w-10 items-center justify-center rounded-[0.75rem] bg-inset text-ink transition-all duration-200 hover:text-ink hover:bg-line border border-line"
                         aria-label="Cart" title="Cart">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -430,6 +430,21 @@
     <p id="cart-notification"
        class="hidden rounded-xl border border-line border-l-4 border-l-brand bg-inset px-5 py-3 text-sm font-medium text-ink shadow-lg"></p>
 </div>
+<!-- A native modal keeps keyboard focus inside and supports Escape to close. -->
+<dialog id="cart-dialog" aria-labelledby="cart-title"
+        class="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 text-ink shadow-xl">
+    <div class="flex items-center justify-between gap-4">
+        <h2 id="cart-title" class="text-xl font-semibold">Your cart</h2>
+        <button id="close-cart" type="button" autofocus
+                class="rounded-xl border border-line bg-inset px-4 py-2 text-sm font-semibold hover:text-brand">Close</button>
+    </div>
+    <ul id="cart-items" class="mt-4 divide-y divide-line"></ul>
+    <p class="mt-4 flex justify-between gap-4 border-t border-line pt-4 font-semibold">
+        <span>Total</span><span id="cart-total"></span>
+    </p>
+    <p id="cart-feedback" role="status" aria-live="polite" aria-atomic="true"
+       class="mt-4 text-sm text-muted"></p>
+</dialog>
 <script src="products.js"></script>
 <script src="main.js"></script>
 </body>

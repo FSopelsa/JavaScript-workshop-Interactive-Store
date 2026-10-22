@@ -6,17 +6,15 @@ const searchInput = document.getElementById('search-input');
 const cartCount = document.getElementById('cart-count');
 const cartNotification = document.getElementById('cart-notification');
 const categoryFilters = document.querySelectorAll('.category-filter');
+const cartButton = document.getElementById('cart-button');
+const cartDialog = document.getElementById('cart-dialog');
+const cartItems = document.getElementById('cart-items');
+const cartTotal = document.getElementById('cart-total');
+const closeCartButton = document.getElementById('close-cart');
+const cartFeedback = document.getElementById('cart-feedback');
 
 // 3. Create and Render Product Cards
-/**
- * Build one product card and return its <article> element without adding it to the page.
- * Keeping card creation separate means every product uses the same HTML and styling.
- * The template literal below holds the shared design; textContent fills in product
- * text without interpreting characters such as < or & as HTML. The image properties
- * supply its source and accessible description, and toLocaleString formats the price
- * as Swedish kronor using the browser's locale. Both cart buttons use this product's
- * ID when clicked. Quick-view and favorite behavior belongs to later workshop tasks.
- */
+/** Build a card for one product and wire its Add to cart buttons to that product ID. */
 function createProductCard(product) {
     const card = document.createElement('article');
     card.className = 'product-card border border-line rounded-[1.125rem] bg-surface p-3 transition-all duration-400 hover:border-brand hover:shadow-lg hover:-translate-y-0.5 group';
@@ -88,8 +86,7 @@ function createProductCard(product) {
         currency: 'SEK'
     });
 
-    // Attach listeners while creating the card so newly filtered cards work too.
-    // Each callback remembers the product belonging to this particular card.
+    // Bind during creation so re-rendered cards keep working.
     card.querySelectorAll('[aria-label="Add to cart"]').forEach(button => {
         button.addEventListener('click', () => addToCart(product.id));
     });
@@ -97,15 +94,7 @@ function createProductCard(product) {
     return card;
 }
 
-/**
- * Replace the visible cards with the products supplied by the caller.
- * Setting the grid's textContent to an empty string removes all its child nodes,
- * including the previous cards. Repeated calls therefore never duplicate products,
- * and an empty array leaves an empty grid. forEach visits each
- * product in order, and appendChild adds the card returned by createProductCard.
- * This function only displays data: it does not change or filter the supplied array.
- * Category and search filtering pass their results to this same function.
- */
+/** Replace the current cards with the supplied products; filtering stays in filterProducts. */
 function renderProducts(productsToRender) {
     productGrid.textContent = '';
     productsToRender.forEach(product => {
@@ -114,15 +103,7 @@ function renderProducts(productsToRender) {
 }
 
 // 4. Add to Cart Function
-/**
- * Find a product by its numeric ID and add one item to the cart. find returns
- * undefined for an unknown ID, so return before changing anything in that case.
- * push adds another entry even if the product is already present: cart.length
- * therefore counts items, not distinct products. Update the badge immediately.
- * localStorage stores text, so JSON.stringify converts the cart array to JSON.
- * A blocked or full storage area can throw; keep the in-memory cart usable and
- * tell the user if this addition could not be saved for a later page load.
- */
+/** Add one catalogue item. Repeated additions stay as separate entries in the cart. */
 function addToCart(productId) {
     const product = products.find(product => product.id === productId);
     if (!product) {
@@ -133,21 +114,14 @@ function addToCart(productId) {
     updateCartCount();
 
     let message = `${product.name} added to cart. Items in cart: ${cart.length}.`;
-    try {
-        localStorage.setItem('cart', JSON.stringify(cart));
-    } catch (error) {
-        console.warn('Cart changes could not be saved.', error);
+    if (!saveCart()) {
         message += ' Cart changes could not be saved for reload.';
     }
     showCartNotification(message);
 }
 
 // 5. Update Cart Count UI
-/**
- * Keep the badge and the cart button's accessible label in sync with cart.length.
- * Hide the badge when empty, then reveal it on the first addition. The button's
- * aria-label includes the count so assistive technology can read it as well.
- */
+/** Update the accessible item count and refresh the cart display if it is open. */
 function updateCartCount() {
     cartCount.textContent = cart.length;
     cartCount.parentElement.setAttribute('aria-label', `Cart (${cart.length})`);
@@ -156,35 +130,99 @@ function updateCartCount() {
     } else {
         cartCount.classList.remove('hidden');
     }
+    if (cartDialog.open) {
+        renderCart();
+    }
 }
 
-/**
- * Show plain text in the page's live status region without moving keyboard focus.
- * Cancel the previous timeout so an earlier addition cannot hide a newer message.
- * setTimeout runs the cleanup callback after 4000 milliseconds; assigning its ID
- * lets the next call cancel it with clearTimeout. Clear the text when hiding it.
- */
+/** Save the current cart and report failure without discarding its in-memory state. */
+function saveCart() {
+    try {
+        localStorage.setItem('cart', JSON.stringify(cart));
+        return true;
+    } catch (error) {
+        console.warn('Cart changes could not be saved.', error);
+        return false;
+    }
+}
+
+/** Group repeated cart entries for display while preserving the stored array format. */
+function renderCart() {
+    cartItems.textContent = '';
+    const items = [];
+    cart.forEach(product => {
+        const item = items.find(item => item.product.id === product.id);
+        if (item) {
+            item.quantity += 1;
+        } else {
+            items.push({ product, quantity: 1 });
+        }
+    });
+
+    let total = 0;
+    items.forEach(item => {
+        const row = document.createElement('li');
+        row.className = 'flex items-center justify-between gap-4 py-4';
+        row.innerHTML = `
+            <div class="min-w-0">
+                <h3 class="font-semibold break-words"></h3>
+                <p class="mt-1 text-sm text-muted"></p>
+                <p class="mt-1 text-sm font-semibold"></p>
+            </div>
+            <button type="button" class="shrink-0 rounded-xl border border-line bg-inset px-3 py-2 text-sm hover:text-brand">Remove</button>
+        `;
+        const linePrice = item.product.price * item.quantity;
+        total += linePrice;
+        row.querySelector('h3').textContent = item.product.name;
+        row.querySelector('h3 + p').textContent = `Quantity: ${item.quantity}`;
+        row.querySelector('p + p').textContent = linePrice.toLocaleString(undefined, {
+            style: 'currency', currency: 'SEK'
+        });
+        const removeButton = row.querySelector('button');
+        removeButton.setAttribute('aria-label', `Remove all ${item.product.name} from cart`);
+        removeButton.addEventListener('click', () => removeFromCart(item.product.id));
+        cartItems.appendChild(row);
+    });
+
+    if (items.length === 0) {
+        const emptyMessage = document.createElement('li');
+        emptyMessage.className = 'py-4 text-muted';
+        emptyMessage.textContent = 'Your cart is empty.';
+        cartItems.appendChild(emptyMessage);
+    }
+    cartTotal.textContent = total.toLocaleString(undefined, { style: 'currency', currency: 'SEK' });
+}
+
+/** Remove all copies of one product, save the change, and keep focus in the modal. */
+function removeFromCart(productId) {
+    const product = cart.find(product => product.id === productId);
+    if (!product) return;
+    cart = cart.filter(product => product.id !== productId);
+    updateCartCount();
+    let message = `${product.name} removed from cart. Items in cart: ${cart.length}.`;
+    if (!saveCart()) {
+        message += ' Cart changes could not be saved for reload.';
+    }
+    showCartNotification(message);
+    if (cartDialog.open) {
+        (cartItems.querySelector('button') || closeCartButton).focus();
+    }
+}
+
+/** Announce cart changes accessibly and let newer messages replace older ones. */
 function showCartNotification(message) {
     clearTimeout(notificationTimeout);
     cartNotification.textContent = message;
     cartNotification.classList.remove('hidden');
+    // The page behind the modal is inert, so repeat feedback inside it.
+    cartFeedback.textContent = message;
     notificationTimeout = setTimeout(() => {
         cartNotification.classList.add('hidden');
         cartNotification.textContent = '';
     }, 4000);
 }
 
-/**
- * Restore the cart at startup, starting empty if storage is missing or unusable.
- * JSON.parse turns the saved text back into a JavaScript value. Array.isArray
- * checks its shape before calling array methods: valid JSON can also be a number,
- * string, object, or null. Keep only object entries, then use each saved ID to find
- * the current catalogue product. find returns undefined for removed or invalid IDs;
- * the final filter discards those entries while keeping valid repeated additions.
- * This uses current product names and prices instead of trusting stored copies.
- * Reading storage and parsing malformed JSON can throw, so catch both errors
- * without preventing the rest of the page from loading.
- */
+/** Restore valid product IDs from storage, using current catalogue data. */
 function loadCart() {
     cart = [];
     try {
@@ -201,28 +239,7 @@ function loadCart() {
 }
 
 // 6. Product Filtering and Event Listeners
-/**
- * Show products matching both the current category selection and search text.
- * Search and category events use this same function so neither control resets
- * the other's results. Always start from products, not the previously visible
- * cards, so removing a restriction can bring matching products back.
- *
- * Array.from turns the checkbox NodeList into an array so filter can keep checked
- * boxes and map can collect their values, such as 'Outerwear' and 'Footwear'.
- * Here, includes checks whether an entire value appears in an array. Unlike the
- * string includes shown in the presentation, which looks for part of a string,
- * this array version requires an exact category value, including letter case.
- * Following the README, no selection or a checked 'all' box shows every product,
- * even when individual categories are also checked. This rule applies only to
- * categories: a non-empty search query still narrows the results.
- *
- * trim removes whitespace at either end of the query. toLowerCase normalizes the
- * query, name, and description so letter case does not affect matching. Here,
- * string includes checks whether the query appears anywhere in either field.
- * Every string includes the empty string, so clearing the query removes only the
- * search restriction. The final && requires both category and search to match.
- * filter returns a new array in source order; renderProducts displays it once.
- */
+/** Apply category and case-insensitive name/description filters together. */
 function filterProducts() {
     const checkedCategories = Array.from(categoryFilters)
         .filter(filter => filter.checked)
@@ -241,22 +258,24 @@ function filterProducts() {
     renderProducts(productsToRender);
 }
 
-// input runs for each edit, including typing, pasting, and clearing the search field.
 if (searchInput) {
     searchInput.addEventListener('input', filterProducts);
 }
 
-// Every checkbox uses the same handler, which reads both controls each time.
 categoryFilters.forEach(filter => {
     filter.addEventListener('change', filterProducts);
 });
 
-// 7. Initial Load
+// Native dialog behavior provides Escape dismissal and returns focus to the opener.
+cartButton.addEventListener('click', () => {
+    renderCart();
+    cartFeedback.textContent = '';
+    cartDialog.showModal();
+});
+closeCartButton.addEventListener('click', () => cartDialog.close());
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Restore once, then update the header even when no products are in the cart.
     loadCart();
     updateCartCount();
-    // products.js loads before main.js, so its full array is available here.
-    // Read both controls so the first list agrees with any initial filter values.
     filterProducts();
 });

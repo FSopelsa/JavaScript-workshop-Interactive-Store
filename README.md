@@ -18,6 +18,16 @@ This project offers a practical way to study JavaScript in a familiar setting. R
 
 ---
 
+## View cart (Task 6, item 4)
+
+Click the cart icon in the header to open the cart. Repeated additions appear as
+one product row with a quantity and line price. **Remove** removes all copies of
+that product and saves the remaining cart. The total and header counter update
+immediately. Close the modal with **Close** or **Escape**.
+
+Serve the project with Live Server and open `tests/view-cart.html` to run the
+cart-view checks. They temporarily replace the saved cart and restore it afterwards.
+
 ## Store styling
 
 The page loads `store.css` locally, so the layout does not depend on the browser loading Tailwind from a CDN. The generated stylesheet is included in the project; opening the page with Live Server does not require a build.
