@@ -95,14 +95,15 @@ function createProductCard(product) {
 
 /**
  * Replace the visible cards with the products supplied by the caller.
- * replaceChildren() first removes the previous cards, so repeated calls never
- * duplicate products and an empty array leaves an empty grid. forEach visits each
+ * Setting the grid's textContent to an empty string removes all its child nodes,
+ * including the previous cards. Repeated calls therefore never duplicate products,
+ * and an empty array leaves an empty grid. forEach visits each
  * product in order, and appendChild adds the card returned by createProductCard.
  * This function only displays data: it does not change or filter the supplied array.
  * Later category and search tasks can pass their results to this same function.
  */
 function renderProducts(productsToRender) {
-    productGrid.replaceChildren();
+    productGrid.textContent = '';
     productsToRender.forEach(product => {
         productGrid.appendChild(createProductCard(product));
     });
@@ -131,11 +132,35 @@ if (searchInput) {
 }
 
 // Category Filters
+/**
+ * Show products matching the categories currently checked in the sidebar.
+ * Array.from turns the checkbox NodeList into an array so filter can keep checked
+ * boxes and map can collect their values, such as 'Outerwear' and 'Footwear'.
+ * Here, includes checks whether an entire value appears in an array. Unlike the
+ * string includes shown in the presentation, which looks for part of a string,
+ * this array version requires an exact category value, including letter case.
+ * Following the README, no selection or a checked 'all' box shows every product,
+ * even when individual categories are also checked. Otherwise, products.filter
+ * keeps a product when its category appears in the selected values. That creates
+ * a new array without changing products or its order, so later selections can
+ * always start from the full catalogue. renderProducts replaces the visible cards.
+ */
+function filterProductsByCategory() {
+    const checkedCategories = Array.from(categoryFilters)
+        .filter(filter => filter.checked)
+        .map(filter => filter.value);
+
+    const showAll = checkedCategories.length === 0 || checkedCategories.includes('all');
+    const productsToRender = showAll
+        ? products
+        : products.filter(product => checkedCategories.includes(product.category));
+
+    renderProducts(productsToRender);
+}
+
+// Every checkbox uses the same handler, which reads the current selection each time.
 categoryFilters.forEach(filter => {
-    filter.addEventListener('change', () => {
-        // TODO: Collect active categories
-        // TODO: Filter products and re-render
-    });
+    filter.addEventListener('change', filterProductsByCategory);
 });
 
 // 7. Initial Load
@@ -143,6 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // TODO: Load cart from localStorage
     // TODO: Update cart count UI
     // products.js loads before main.js, so its full array is available here.
-    // Render after the HTML is ready; later filters can replace this initial list.
-    renderProducts(products);
+    // Read the initial checkbox state so the first list agrees with the filters.
+    filterProductsByCategory();
 });

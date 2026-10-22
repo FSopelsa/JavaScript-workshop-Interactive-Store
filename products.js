@@ -2,6 +2,7 @@ const products = [
     {
         id: 1,
         name: "Technical Shell Jacket",
+        description: "An outer layer for walks, commutes, and everyday outdoor activities.",
         price: 890,
         category: "Outerwear",
         image: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&q=80&w=800",
@@ -10,6 +11,7 @@ const products = [
     {
         id: 2,
         name: "Speedster Running Shoes",
+        description: "Sports footwear for jogging, training, and active days.",
         price: 1200,
         category: "Footwear",
         image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800",
@@ -18,6 +20,7 @@ const products = [
     {
         id: 3,
         name: "Minimalist Quartz Watch",
+        description: "A wristwatch for keeping track of time and completing everyday outfits.",
         price: 1850,
         category: "Accessories",
         image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=800",
@@ -26,6 +29,7 @@ const products = [
     {
         id: 4,
         name: "Classic Canvas Sneakers",
+        description: "Casual canvas shoes for relaxed outfits and everyday wear.",
         price: 550,
         category: "Footwear",
         image: "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&q=80&w=800",
@@ -34,6 +38,7 @@ const products = [
     {
         id: 5,
         name: "Premium Wireless Headphones",
+        description: "Audio accessories for listening to music, podcasts, and other recordings.",
         price: 1690,
         category: "Accessories",
         image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800",
@@ -42,6 +47,7 @@ const products = [
     {
         id: 6,
         name: "Tech Daypack",
+        description: "A backpack for carrying daily essentials on commutes and day trips.",
         price: 1100,
         category: "Accessories",
         image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=800",
@@ -50,6 +56,7 @@ const products = [
     {
         id: 7,
         name: "Urban Explorer Boots",
+        description: "Boots for city walks, casual outfits, and everyday adventures.",
         price: 890,
         category: "Footwear",
         image: "https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=400",
@@ -58,6 +65,7 @@ const products = [
     {
         id: 8,
         name: "Polarized Retro Sunglasses",
+        description: "Retro-style eyewear for sunny days and outdoor activities.",
         price: 2500,
         category: "Accessories",
         image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400",

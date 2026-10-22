@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Task 1: Product rendering checks</title>
+    <title>Tasks 1–2: Product rendering and category checks</title>
 </head>
 <body>
-<h1>Task 1: Product rendering checks</h1>
+<h1>Tasks 1–2: Product rendering and category checks</h1>
 <p>Serve the workshop over HTTP, then open this page. No test dependencies are required.</p>
 <pre id="result">Running checks...</pre>
 <iframe id="store" src="../index.html" title="Store under test" hidden></iframe>
@@ -22,9 +22,16 @@
         checks += 1;
     }
 
-    // Wait for the actual store to load, including its scripts, then check its DOM.
-    // A small custom product lets us test replacement, safe text, and empty results
-    // without changing products.js or implementing the later filtering tasks.
+    // Compare the visible names with a hand-written list, including their order.
+    // Checking the actual cards catches wrong category matches as well as wrong counts.
+    function checkProductNames(grid, expectedNames, message) {
+        const names = Array.from(grid.querySelectorAll('h3'), heading => heading.textContent.trim());
+        check(JSON.stringify(names) === JSON.stringify(expectedNames), message);
+    }
+
+    // Wait for the actual store and its scripts, then use real checkbox clicks to
+    // exercise every category listener. Afterwards, a small custom product tests
+    // rendering without changing products.js or implementing search and cart logic.
     function runChecks() {
         try {
             const store = document.getElementById('store').contentWindow;
@@ -35,9 +42,49 @@
                 'Premium Wireless Headphones', 'Tech Daypack',
                 'Urban Explorer Boots', 'Polarized Retro Sunglasses'
             ];
-            const names = Array.from(grid.querySelectorAll('h3'), heading => heading.textContent.trim());
             check(grid.children.length === 8, 'Initial load must show all eight products.');
-            check(JSON.stringify(names) === JSON.stringify(expectedNames), 'Product names or order are incorrect.');
+            checkProductNames(grid, expectedNames, 'Product names or order are incorrect.');
+
+            const all = store.document.querySelector('.category-filter[value="all"]');
+            const outerwear = store.document.querySelector('.category-filter[value="Outerwear"]');
+            const footwear = store.document.querySelector('.category-filter[value="Footwear"]');
+            const accessories = store.document.querySelector('.category-filter[value="Accessories"]');
+
+            all.click();
+            checkProductNames(grid, expectedNames, 'No checked categories must show all products.');
+            outerwear.click();
+            checkProductNames(grid, ['Technical Shell Jacket'], 'Outerwear must show only the jacket.');
+            footwear.click();
+            checkProductNames(grid, [
+                'Technical Shell Jacket', 'Speedster Running Shoes',
+                'Classic Canvas Sneakers', 'Urban Explorer Boots'
+            ], 'Multiple categories must show their combined products in source order.');
+            outerwear.click();
+            checkProductNames(grid, [
+                'Speedster Running Shoes', 'Classic Canvas Sneakers', 'Urban Explorer Boots'
+            ], 'Unchecking Outerwear must leave only Footwear.');
+            footwear.click();
+            checkProductNames(grid, expectedNames, 'Clearing the last category must restore every product.');
+            accessories.click();
+            checkProductNames(grid, [
+                'Minimalist Quartz Watch', 'Premium Wireless Headphones',
+                'Tech Daypack', 'Polarized Retro Sunglasses'
+            ], 'Accessories must show all four matching products.');
+            all.click();
+            checkProductNames(grid, expectedNames, 'All Products must override an active category.');
+            outerwear.click();
+            checkProductNames(grid, expectedNames, 'All Products must still win when another category is checked.');
+            all.click();
+            checkProductNames(grid, [
+                'Technical Shell Jacket', 'Minimalist Quartz Watch',
+                'Premium Wireless Headphones', 'Tech Daypack', 'Polarized Retro Sunglasses'
+            ], 'Unchecking All Products must apply the categories that remain checked.');
+            accessories.click();
+            checkProductNames(grid, ['Technical Shell Jacket'], 'Removing Accessories must leave only Outerwear.');
+            outerwear.click();
+            checkProductNames(grid, expectedNames, 'Switching categories must not remove products from the source.');
+            all.click();
+            checkProductNames(grid, expectedNames, 'Selecting All Products alone must show every product.');
 
             const product = {
                 id: 99,
